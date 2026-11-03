@@ -10,5 +10,5 @@ data class Expense(
     val date: LocalDate,
     val note: String = "",
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null   //null values
 )

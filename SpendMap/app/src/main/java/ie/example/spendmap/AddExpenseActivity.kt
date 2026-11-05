@@ -236,7 +236,9 @@ fun AddExpenseScreen(
                     }.getOrNull()
 
                     when {
-                        expenseAmount == null || expenseAmount <= 0 -> {
+                        expenseAmount == null ||
+                                !expenseAmount.isFinite() ||
+                                expenseAmount <= 0 -> {
                             errorMessage = "Please enter a valid amount."
                         }
 

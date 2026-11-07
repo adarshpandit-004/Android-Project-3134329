@@ -1,8 +1,9 @@
 
 package ie.example.spendmap
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -13,19 +14,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -42,20 +48,36 @@ class AddExpenseActivity : ComponentActivity() {
                 AddExpenseScreen(
                     onSave = { amount, category, date, note ->
 
-                        Toast.makeText(
-                            this,
-                            "Expense details saved successfully!",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        // Create a result Intent to carry the new expense
+                        // back to the Home Activity.
+                        val resultIntent = Intent().apply {
+                            putExtra(EXTRA_AMOUNT, amount)
+                            putExtra(EXTRA_CATEGORY, category)
+                            putExtra(EXTRA_DATE, date.toString())
+                            putExtra(EXTRA_NOTE, note)
+                        }
 
+                        // Tell Android that the expense was saved successfully.
+                        setResult(Activity.RESULT_OK, resultIntent)
+
+                        // Close this screen and return to Home.
                         finish()
                     },
                     onCancel = {
+                        // Close the screen without returning an expense.
                         finish()
                     }
                 )
             }
         }
+    }
+
+    companion object {
+        // These keys are used by both Activities to exchange expense details.
+        const val EXTRA_AMOUNT = "expense_amount"
+        const val EXTRA_CATEGORY = "expense_category"
+        const val EXTRA_DATE = "expense_date"
+        const val EXTRA_NOTE = "expense_note"
     }
 }
 
@@ -66,6 +88,7 @@ fun AddExpenseScreen(
     onCancel: () -> Unit
 ) {
 
+    // These variables remember what the user types or selects.
     var amount by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -109,19 +132,15 @@ fun AddExpenseScreen(
                 style = MaterialTheme.typography.bodyLarge
             )
 
-            // Expense amount
+            // The amount field accepts decimal numbers.
             OutlinedTextField(
                 value = amount,
                 onValueChange = {
                     amount = it
                     errorMessage = ""
                 },
-                label = {
-                    Text("Amount (€)")
-                },
-                placeholder = {
-                    Text("e.g. 15.50")
-                },
+                label = { Text("Amount (€)") },
+                placeholder = { Text("e.g. 15.50") },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
                 ),
@@ -129,7 +148,7 @@ fun AddExpenseScreen(
                 singleLine = true
             )
 
-            // Expense category
+            // Let the user choose from our predefined categories.
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = {
@@ -142,12 +161,8 @@ fun AddExpenseScreen(
                     value = selectedCategory,
                     onValueChange = {},
                     readOnly = true,
-                    label = {
-                        Text("Category")
-                    },
-                    placeholder = {
-                        Text("Choose a category")
-                    },
+                    label = { Text("Category") },
+                    placeholder = { Text("Choose a category") },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(
                             expanded = expanded
@@ -164,13 +179,9 @@ fun AddExpenseScreen(
                         expanded = false
                     }
                 ) {
-
                     categories.forEach { category ->
-
                         DropdownMenuItem(
-                            text = {
-                                Text(category)
-                            },
+                            text = { Text(category) },
                             onClick = {
                                 selectedCategory = category
                                 expanded = false
@@ -181,41 +192,33 @@ fun AddExpenseScreen(
                 }
             }
 
-            // Expense date
+            // The date is entered using the ISO format YYYY-MM-DD.
             OutlinedTextField(
                 value = date,
                 onValueChange = {
                     date = it
                     errorMessage = ""
                 },
-                label = {
-                    Text("Date")
-                },
-                placeholder = {
-                    Text("YYYY-MM-DD")
-                },
+                label = { Text("Date") },
+                placeholder = { Text("YYYY-MM-DD") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
-            // Optional note
+            // A note is optional, so the user can leave this empty.
             OutlinedTextField(
                 value = note,
                 onValueChange = {
                     note = it
                 },
-                label = {
-                    Text("Note (Optional)")
-                },
-                placeholder = {
-                    Text("What did you spend on?")
-                },
+                label = { Text("Note (Optional)") },
+                placeholder = { Text("What did you spend on?") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 3
             )
 
-            // Display validation message
+            // Show a helpful message if the required details are invalid.
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
@@ -226,11 +229,12 @@ fun AddExpenseScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Save expense
             Button(
                 onClick = {
 
+                    // Convert the entered text into the correct data types.
                     val expenseAmount = amount.toDoubleOrNull()
+
                     val expenseDate = runCatching {
                         LocalDate.parse(date.trim())
                     }.getOrNull()
@@ -239,6 +243,7 @@ fun AddExpenseScreen(
                         expenseAmount == null ||
                                 !expenseAmount.isFinite() ||
                                 expenseAmount <= 0 -> {
+
                             errorMessage = "Please enter a valid amount."
                         }
 
@@ -251,6 +256,8 @@ fun AddExpenseScreen(
                         }
 
                         else -> {
+                            // All required information is valid.
+                            // Send it to the Activity to return to Home.
                             onSave(
                                 expenseAmount,
                                 selectedCategory,
@@ -265,8 +272,7 @@ fun AddExpenseScreen(
                 Text("Save Expense")
             }
 
-            // Cancel button
-            androidx.compose.material3.OutlinedButton(
+            OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.fillMaxWidth()
             ) {

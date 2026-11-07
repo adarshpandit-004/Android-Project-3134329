@@ -1,6 +1,7 @@
 
 package ie.example.spendmap
 
+import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,8 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -38,6 +39,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
+
+// Prepare a monthly spending summary and open Android's sharing menu.
+fun shareMonthlySummary(
+    context: Context,
+    totalSpent: Double,
+    monthlyBudget: Double,
+    expenseCount: Int
+) {
+    val remainingBudget = monthlyBudget - totalSpent
+
+    // Build a readable message that the user can send to someone.
+    val summary = """
+        SpendMap - Monthly Spending Summary
+
+        Total expenses: $expenseCount
+        Total spent: €${"%.2f".format(totalSpent)}
+        Monthly budget: €${"%.2f".format(monthlyBudget)}
+        Remaining budget: €${"%.2f".format(remainingBudget)}
+
+        Tracked using SpendMap.
+    """.trimIndent()
+
+    // ACTION_SEND asks Android to find an app that can share text.
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "My SpendMap Monthly Summary")
+        putExtra(Intent.EXTRA_TEXT, summary)
+    }
+
+    // Let the user choose which installed app should receive the summary.
+    context.startActivity(
+        Intent.createChooser(shareIntent, "Share monthly summary")
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -244,6 +279,21 @@ fun HomeScreen() {
                                 "Over budget by: €%.2f".format(-remainingBudget)
                             }
                         )
+
+                        // Share the current month's totals and expense count.
+                        Button(
+                            onClick = {
+                                shareMonthlySummary(
+                                    context = context,
+                                    totalSpent = totalSpent,
+                                    monthlyBudget = monthlyBudget,
+                                    expenseCount = currentMonthExpenses.size
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Share Monthly Summary")
+                        }
                     }
                 }
             }

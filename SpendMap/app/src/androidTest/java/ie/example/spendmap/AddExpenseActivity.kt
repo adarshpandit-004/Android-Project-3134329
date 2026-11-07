@@ -1,7 +1,6 @@
 
 package ie.example.spendmap
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -58,7 +57,7 @@ class AddExpenseActivity : ComponentActivity() {
                         }
 
                         // Tell Android that the expense was saved successfully.
-                        setResult(Activity.RESULT_OK, resultIntent)
+                        setResult(RESULT_OK, resultIntent)
 
                         // Close this screen and return to Home.
                         finish()

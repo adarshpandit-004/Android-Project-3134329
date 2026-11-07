@@ -4,7 +4,6 @@ package ie.example.spendmap
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -23,10 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -38,12 +36,15 @@ class ExpenseDetailsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // The Home screen sends the ID of the expense the user selected.
+        // Read the selected expense details sent from the Home screen.
         val expenseId = intent.getIntExtra(EXTRA_EXPENSE_ID, -1)
+        val amount = intent.getDoubleExtra(EXTRA_AMOUNT, 0.0)
+        val category = intent.getStringExtra(EXTRA_CATEGORY) ?: ""
+        val date = intent.getStringExtra(EXTRA_DATE) ?: ""
+        val note = intent.getStringExtra(EXTRA_NOTE) ?: ""
 
-        // If no valid ID arrives, there is no expense to display.
+        // Close the screen if the Intent does not contain a valid expense.
         if (expenseId == -1) {
-            Toast.makeText(this, "Expense not found", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -52,22 +53,28 @@ class ExpenseDetailsActivity : ComponentActivity() {
             SpendMapTheme {
                 ExpenseDetailsScreen(
                     expenseId = expenseId,
-                    onSave = { amount, category, date, note ->
-                        // Send the edited values back to the Home screen.
+                    startingAmount = amount.toString(),
+                    startingCategory = category,
+                    startingDate = date,
+                    startingNote = note,
+
+                    // Return the edited information to the Home screen.
+                    onSave = { newAmount, newCategory, newDate, newNote ->
                         val result = Intent().apply {
                             putExtra(EXTRA_EXPENSE_ID, expenseId)
-                            putExtra(EXTRA_AMOUNT, amount)
-                            putExtra(EXTRA_CATEGORY, category)
-                            putExtra(EXTRA_DATE, date)
-                            putExtra(EXTRA_NOTE, note)
+                            putExtra(EXTRA_AMOUNT, newAmount)
+                            putExtra(EXTRA_CATEGORY, newCategory)
+                            putExtra(EXTRA_DATE, newDate)
+                            putExtra(EXTRA_NOTE, newNote)
                             putExtra(EXTRA_ACTION, ACTION_EDIT)
                         }
 
                         setResult(Activity.RESULT_OK, result)
                         finish()
                     },
+
+                    // Tell the Home screen to remove this expense.
                     onDelete = {
-                        // Tell the Home screen which expense should be removed.
                         val result = Intent().apply {
                             putExtra(EXTRA_EXPENSE_ID, expenseId)
                             putExtra(EXTRA_ACTION, ACTION_DELETE)
@@ -76,8 +83,9 @@ class ExpenseDetailsActivity : ComponentActivity() {
                         setResult(Activity.RESULT_OK, result)
                         finish()
                     },
+
+                    // Return without changing anything.
                     onCancel = {
-                        // Closing without saving leaves the original expense unchanged.
                         setResult(Activity.RESULT_CANCELED)
                         finish()
                     }
@@ -103,25 +111,19 @@ class ExpenseDetailsActivity : ComponentActivity() {
 @Composable
 fun ExpenseDetailsScreen(
     expenseId: Int,
+    startingAmount: String,
+    startingCategory: String,
+    startingDate: String,
+    startingNote: String,
     onSave: (Double, String, String, String) -> Unit,
     onDelete: () -> Unit,
     onCancel: () -> Unit
 ) {
-    // Find the selected expense in the sample data for now.
-    val expense = sampleExpenses.firstOrNull { it.id == expenseId }
-
-    if (expense == null) {
-        LaunchedEffect(Unit) {
-            onCancel()
-        }
-        return
-    }
-
-    // These fields start with the expense's existing values.
-    var amount by remember { mutableStateOf(expense.amount.toString()) }
-    var category by remember { mutableStateOf(expense.category) }
-    var date by remember { mutableStateOf(expense.date.toString()) }
-    var note by remember { mutableStateOf(expense.note) }
+    // Keep the existing expense information in editable screen fields.
+    var amount by remember(expenseId) { mutableStateOf(startingAmount) }
+    var category by remember(expenseId) { mutableStateOf(startingCategory) }
+    var date by remember(expenseId) { mutableStateOf(startingDate) }
+    var note by remember(expenseId) { mutableStateOf(startingNote) }
     var errorMessage by remember { mutableStateOf("") }
 
     Scaffold(
@@ -173,7 +175,7 @@ fun ExpenseDetailsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Show validation feedback instead of accepting invalid values.
+            // Display a message when the user enters invalid information.
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
@@ -186,6 +188,8 @@ fun ExpenseDetailsScreen(
             Button(
                 onClick = {
                     val parsedAmount = amount.toDoubleOrNull()
+
+                    // LocalDate checks that the date is a real calendar date.
                     val validDate = try {
                         LocalDate.parse(date)
                     } catch (exception: Exception) {
@@ -194,13 +198,13 @@ fun ExpenseDetailsScreen(
 
                     when {
                         parsedAmount == null || parsedAmount <= 0.0 ->
-                            errorMessage = "Enter a valid amount greater than zero."
+                            errorMessage = "Enter an amount greater than zero."
 
                         category.isBlank() ->
                             errorMessage = "Please enter a category."
 
                         validDate == null ->
-                            errorMessage = "Enter a valid date in YYYY-MM-DD format."
+                            errorMessage = "Enter a valid date (YYYY-MM-DD)."
 
                         else -> onSave(
                             parsedAmount,

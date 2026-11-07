@@ -28,6 +28,11 @@
             android:exported="false"
             android:label="Add Expense"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ExpenseDetailsActivity"
+            android:exported="false"
+            android:label="Expense Details"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

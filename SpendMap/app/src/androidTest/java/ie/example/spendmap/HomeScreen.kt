@@ -1,40 +1,43 @@
 
 package ie.example.spendmap
 
-import android.app.Activity
 import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,276 +45,336 @@ fun HomeScreen() {
 
     val context = LocalContext.current
 
-    // Keep the expenses in a state-aware list.
-    // Compose will recompose the screen whenever this list changes.
+    // Keep expenses in Compose state so the screen refreshes after changes.
     val expenses = remember {
         mutableStateListOf<Expense>().apply {
             addAll(sampleExpenses)
         }
     }
 
-    // Temporary monthly budget until we build the budget settings.
-    val monthlyBudget = 1000.0
+    // This is the starting monthly budget. The user can change it below.
+    var monthlyBudget by remember { mutableStateOf(1000.0) }
 
-    // Open AddExpenseActivity and wait for the user's result.
+    // Controls whether the budget editing window is visible.
+    var showBudgetDialog by remember { mutableStateOf(false) }
+    var budgetInput by remember { mutableStateOf("1000.00") }
+
+    // Open the Add Expense screen and wait for the new expense details.
     val addExpenseLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
 
-        // Only process the result if the user saved an expense.
-        if (result.resultCode == Activity.RESULT_OK) {
-
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
             val data = result.data
 
             if (data != null) {
-
-                // Read the expense information sent by AddExpenseActivity.
                 val amount = data.getDoubleExtra(
-                    AddExpenseActivity.EXTRA_AMOUNT,
-                    0.0
+                    AddExpenseActivity.EXTRA_AMOUNT, 0.0
                 )
-
                 val category = data.getStringExtra(
                     AddExpenseActivity.EXTRA_CATEGORY
-                )
-
+                ) ?: ""
                 val dateText = data.getStringExtra(
                     AddExpenseActivity.EXTRA_DATE
-                )
-
+                ) ?: ""
                 val note = data.getStringExtra(
                     AddExpenseActivity.EXTRA_NOTE
                 ) ?: ""
 
-                // Convert the returned date text into a LocalDate.
-                val expenseDate = runCatching {
+                // Convert the returned date into a LocalDate before saving it.
+                val date = try {
                     LocalDate.parse(dateText)
-                }.getOrNull()
+                } catch (exception: Exception) {
+                    null
+                }
 
-                // Make sure all the required information is available.
-                if (
-                    amount > 0 &&
-                    category != null &&
-                    expenseDate != null
-                ) {
-
-                    // Generate an ID for the new expense.
+                if (amount > 0.0 && category.isNotBlank() && date != null) {
                     val newId = (expenses.maxOfOrNull { it.id } ?: 0) + 1
 
-                    // Create the new Expense object.
-                    val newExpense = Expense(
-                        id = newId,
-                        amount = amount,
-                        category = category,
-                        date = expenseDate,
-                        note = note
+                    expenses.add(
+                        Expense(
+                            id = newId,
+                            amount = amount,
+                            category = category,
+                            date = date,
+                            note = note
+                        )
                     )
-
-                    // Add it to the list.
-                    expenses.add(newExpense)
                 }
             }
         }
     }
 
-    // Only calculate spending for the current month.
-    val monthlyExpenses = expenses.filter {
-        YearMonth.from(it.date) == YearMonth.now()
+    // Open the Details screen and wait for an edit or delete instruction.
+    val detailsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val data = result.data
+
+            if (data != null) {
+                val expenseId = data.getIntExtra(
+                    ExpenseDetailsActivity.EXTRA_EXPENSE_ID, -1
+                )
+                val action = data.getStringExtra(
+                    ExpenseDetailsActivity.EXTRA_ACTION
+                )
+
+                // Find the selected expense so we can update or remove it.
+                val expenseIndex = expenses.indexOfFirst { it.id == expenseId }
+
+                if (expenseIndex != -1) {
+                    when (action) {
+                        ExpenseDetailsActivity.ACTION_EDIT -> {
+                            val amount = data.getDoubleExtra(
+                                ExpenseDetailsActivity.EXTRA_AMOUNT, 0.0
+                            )
+                            val category = data.getStringExtra(
+                                ExpenseDetailsActivity.EXTRA_CATEGORY
+                            ) ?: ""
+                            val dateText = data.getStringExtra(
+                                ExpenseDetailsActivity.EXTRA_DATE
+                            ) ?: ""
+                            val note = data.getStringExtra(
+                                ExpenseDetailsActivity.EXTRA_NOTE
+                            ) ?: ""
+
+                            val date = try {
+                                LocalDate.parse(dateText)
+                            } catch (exception: Exception) {
+                                null
+                            }
+
+                            if (amount > 0.0 && category.isNotBlank() && date != null) {
+                                // Replace the old item with the edited version.
+                                expenses[expenseIndex] = Expense(
+                                    id = expenseId,
+                                    amount = amount,
+                                    category = category,
+                                    date = date,
+                                    note = note
+                                )
+                            }
+                        }
+
+                        ExpenseDetailsActivity.ACTION_DELETE -> {
+                            // Removing the item from the list updates the Home screen.
+                            expenses.removeAt(expenseIndex)
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    val totalSpent = monthlyExpenses.sumOf { it.amount }
+    // Only count expenses that belong to the current month and year.
+    val currentMonthExpenses = expenses.filter {
+        it.date.month == LocalDate.now().month &&
+                it.date.year == LocalDate.now().year
+    }
+
+    val totalSpent = currentMonthExpenses.sumOf { it.amount }
     val remainingBudget = monthlyBudget - totalSpent
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "SpendMap",
-                        fontWeight = FontWeight.Bold
-                    )
+                title = { Text("SpendMap") },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            budgetInput = monthlyBudget.toString()
+                            showBudgetDialog = true
+                        }
+                    ) {
+                        Text("Edit budget")
+                    }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-
-                    // An explicit Intent tells Android exactly
-                    // which Activity we want to open.
-                    val intent = Intent(
-                        context,
-                        AddExpenseActivity::class.java
-                    )
-
-                    // Launch Add Expense and wait for its result.
+                    // Explicit Intent opens our own Add Expense Activity.
+                    val intent = Intent(context, AddExpenseActivity::class.java)
                     addExpenseLauncher.launch(intent)
-                },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                }
             ) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.headlineMedium
-                )
+                Text("+")
             }
         }
-    ) { innerPadding ->
+    ) { paddingValues ->
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // Display the monthly spending summary.
             item {
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-
                         Text(
-                            text = "Monthly Spending",
-                            color = MaterialTheme.colorScheme.onPrimary
+                            text = "Monthly spending",
+                            style = MaterialTheme.typography.titleMedium
                         )
-
-                        Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
                             text = "€%.2f".format(totalSpent),
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            style = MaterialTheme.typography.headlineLarge
                         )
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Text(text = "Budget: €%.2f".format(monthlyBudget))
 
+                        Text(
+                            text = if (remainingBudget >= 0) {
+                                "Remaining: €%.2f".format(remainingBudget)
+                            } else {
+                                "Over budget by: €%.2f".format(-remainingBudget)
+                            }
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = "Recent expenses",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+
+            if (expenses.isEmpty()) {
+                item {
+                    Text("No expenses yet. Tap + to add your first expense.")
+                }
+            } else {
+                items(
+                    items = expenses.sortedByDescending { it.date },
+                    key = { it.id }
+                ) { expense ->
+
+                    // Tapping an expense opens its Details screen.
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val intent = Intent(
+                                    context,
+                                    ExpenseDetailsActivity::class.java
+                                ).apply {
+                                    putExtra(
+                                        ExpenseDetailsActivity.EXTRA_EXPENSE_ID,
+                                        expense.id
+                                    )
+                                    putExtra(
+                                        ExpenseDetailsActivity.EXTRA_AMOUNT,
+                                        expense.amount
+                                    )
+                                    putExtra(
+                                        ExpenseDetailsActivity.EXTRA_CATEGORY,
+                                        expense.category
+                                    )
+                                    putExtra(
+                                        ExpenseDetailsActivity.EXTRA_DATE,
+                                        expense.date.toString()
+                                    )
+                                    putExtra(
+                                        ExpenseDetailsActivity.EXTRA_NOTE,
+                                        expense.note
+                                    )
+                                }
+
+                                detailsLauncher.launch(intent)
+                            }
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            BudgetInfo(
-                                title = "Budget",
-                                amount = monthlyBudget
-                            )
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = expense.category,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
 
-                            BudgetInfo(
-                                title = "Remaining",
-                                amount = remainingBudget
+                                Text(
+                                    text = expense.note.ifBlank { "No note" },
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+
+                                Text(
+                                    text = expense.date.toString(),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            Text(
+                                text = "€%.2f".format(expense.amount),
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
                     }
                 }
             }
-
-            // Heading for the expense list.
-            item {
-                Text(
-                    text = "Recent Expenses",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // Display the newest expenses first.
-            items(
-                items = expenses.sortedByDescending { it.date },
-                key = { it.id }
-            ) { expense ->
-
-                ExpenseItem(expense = expense)
-            }
         }
     }
-}
 
-@Composable
-fun BudgetInfo(
-    title: String,
-    amount: Double
-) {
-    Column {
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Text(
-            text = "€%.2f".format(amount),
-            color = MaterialTheme.colorScheme.onPrimary,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-fun ExpenseItem(expense: Expense) {
-
-    val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                Text(
-                    text = expense.category,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
+    // A small dialog lets the user change their monthly spending limit.
+    if (showBudgetDialog) {
+        AlertDialog(
+            onDismissRequest = { showBudgetDialog = false },
+            title = { Text("Monthly budget") },
+            text = {
+                OutlinedTextField(
+                    value = budgetInput,
+                    onValueChange = { budgetInput = it },
+                    label = { Text("Budget amount (€)") },
+                    singleLine = true
                 )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val newBudget = budgetInput.toDoubleOrNull()
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = expense.note.ifBlank { "No note added" },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Text(
-                    text = expense.date.format(dateFormatter),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                        if (newBudget != null && newBudget > 0.0) {
+                            monthlyBudget = newBudget
+                            showBudgetDialog = false
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Enter a valid budget greater than zero.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showBudgetDialog = false }
+                ) {
+                    Text("Cancel")
+                }
             }
-
-            Text(
-                text = "- €%.2f".format(expense.amount),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
+        )
     }
 }

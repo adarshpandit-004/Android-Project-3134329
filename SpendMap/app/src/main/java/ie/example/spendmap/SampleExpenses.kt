@@ -1,4 +1,3 @@
-
 package ie.example.spendmap
 
 import java.time.LocalDate

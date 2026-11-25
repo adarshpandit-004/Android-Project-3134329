@@ -1,4 +1,3 @@
-
 package ie.example.spendmap
 
 import android.app.Activity
@@ -25,6 +24,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -34,10 +34,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
+import kotlin.jvm.java
 
 // Prepare a monthly spending summary and open Android's sharing menu.
 fun shareMonthlySummary(
@@ -75,7 +77,10 @@ fun shareMonthlySummary(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    shakeEnabled: Boolean,
+    onShakeEnabledChange: (Boolean) -> Unit
+) {
 
     val context = LocalContext.current
 
@@ -92,6 +97,9 @@ fun HomeScreen() {
     // Controls whether the budget editing window is visible.
     var showBudgetDialog by remember { mutableStateOf(false) }
     var budgetInput by remember { mutableStateOf("1000.00") }
+
+    // Controls whether the Settings window is visible.
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     // Open the Add Expense screen and wait for the new expense details.
     val addExpenseLauncher = rememberLauncherForActivityResult(
@@ -216,6 +224,17 @@ fun HomeScreen() {
             TopAppBar(
                 title = { Text("SpendMap") },
                 actions = {
+
+                    // Open Settings without leaving the existing Home screen.
+                    TextButton(
+                        onClick = {
+                            showSettingsDialog = true
+                        }
+                    ) {
+                        Text("Settings")
+                    }
+
+                    // Keep the existing monthly budget editing option.
                     TextButton(
                         onClick = {
                             budgetInput = monthlyBudget.toString()
@@ -382,6 +401,60 @@ fun HomeScreen() {
                 }
             }
         }
+    }
+
+    // Settings dialog contains the shake detection on/off switch.
+    if (showSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSettingsDialog = false
+            },
+            title = {
+                Text("Settings")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Shake to add expense",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+
+                            Text(
+                                text = "Shake your phone to open the Add Expense screen.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        Switch(
+                            checked = shakeEnabled,
+                            onCheckedChange = { enabled ->
+                                // Tell MainActivity to enable or disable the sensor.
+                                onShakeEnabledChange(enabled)
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSettingsDialog = false
+                    }
+                ) {
+                    Text("Done")
+                }
+            }
+        )
     }
 
     // A small dialog lets the user change their monthly spending limit.

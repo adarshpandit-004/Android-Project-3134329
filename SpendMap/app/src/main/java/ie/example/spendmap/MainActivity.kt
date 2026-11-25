@@ -33,6 +33,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+// Finds the phone's accelerometer, if one is available.
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         enableEdgeToEdge()
 

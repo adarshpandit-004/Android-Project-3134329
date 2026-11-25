@@ -2,6 +2,7 @@
 package ie.example.spendmap
 
 import android.content.Context
+import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -13,35 +14,35 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import ie.example.spendmap.ui.theme.SpendMapTheme
+import kotlin.jvm.java
 
 class MainActivity : ComponentActivity(), SensorEventListener {
 
     // Android uses this manager to access the phone's built-in sensors.
     private lateinit var sensorManager: SensorManager
 
-    // This stores the phone's accelerometer sensor.
+    // This stores the phone's accelerometer, if the device has one.
     private var accelerometer: Sensor? = null
 
-    // A shake must be strong enough to pass this acceleration threshold.
+    // A shake must pass this acceleration threshold to be recognised.
     private val shakeThreshold = 12f
 
-    // This records the time of the previous detected shake.
+    // This records when the previous shake was detected.
     private var lastShakeTime = 0L
 
-    // Prevents repeated shake detection within one second.
+    // Prevents the phone from opening Add Expense repeatedly within one second.
     private val shakeCooldown = 1000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-// Finds the phone's accelerometer, if one is available.
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         enableEdgeToEdge()
 
-        // Get the sensor service provided by Android.
+        // Get the Android sensor service before trying to access the accelerometer.
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-        // Find the phone's accelerometer, if one is available.
+        // Check whether the phone has an accelerometer.
+        // If it does not, this value remains null and shake detection stays inactive.
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         setContent {
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onResume() {
         super.onResume()
 
+        // Only register the listener if an accelerometer is available.
         accelerometer?.let { sensor ->
             sensorManager.registerListener(
                 this,
@@ -83,7 +85,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         // Calculate the total acceleration across all three directions.
         val acceleration = kotlin.math.sqrt(x * x + y * y + z * z)
 
-        // Compare the movement against gravity to identify strong movement.
+        // Remove the effect of gravity to focus on the phone's movement.
         val movement = kotlin.math.abs(
             acceleration - SensorManager.GRAVITY_EARTH
         )
@@ -96,12 +98,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         ) {
             lastShakeTime = currentTime
 
-            // Step 1 only detects the shake.
-            // Step 2 will connect this detection to Add Expense.
+            // Open the existing Add Expense screen when a shake is detected.
+            // This reuses the AddExpenseActivity created in Milestone 1.
+            val addExpenseIntent = Intent(
+                this,
+                AddExpenseActivity::class.java
+            )
+
+            startActivity(addExpenseIntent)
         }
     }
 
-    // This sensor callback is not needed for the accelerometer.
+    // This callback is not needed for our accelerometer functionality.
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
     }
 }

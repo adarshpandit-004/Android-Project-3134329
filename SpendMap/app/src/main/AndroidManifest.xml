@@ -2,6 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+        SpendMap requests location access only when the user taps
+        "Add location" on the Add Expense screen.
+
+        COARSE_LOCATION allows approximate location.
+        FINE_LOCATION allows more precise location when the user permits it.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,28 +21,33 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SpendMap">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.SpendMap"
             android:windowSoftInputMode="adjustResize">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
         <activity
             android:name=".AddExpenseActivity"
             android:exported="false"
             android:label="Add Expense"
             android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".ExpenseDetailsActivity"
             android:exported="false"
             android:label="Expense Details"
             android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

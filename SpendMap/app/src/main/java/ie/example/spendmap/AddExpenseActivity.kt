@@ -52,8 +52,7 @@ class AddExpenseActivity : ComponentActivity() {
                 AddExpenseScreen(
                     onSave = { amount, category, date, note ->
 
-                        // Create a result Intent to carry the new expense
-                        // details back to the Home screen.
+                        // Return the new expense details to the Home screen.
                         val resultIntent = Intent().apply {
                             putExtra(EXTRA_AMOUNT, amount)
                             putExtra(EXTRA_CATEGORY, category)
@@ -61,14 +60,10 @@ class AddExpenseActivity : ComponentActivity() {
                             putExtra(EXTRA_NOTE, note)
                         }
 
-                        // Tell Android that the expense was saved successfully.
                         setResult(RESULT_OK, resultIntent)
-
-                        // Close this screen and return to Home.
                         finish()
                     },
                     onCancel = {
-                        // Close the screen without returning an expense.
                         finish()
                     }
                 )
@@ -77,8 +72,6 @@ class AddExpenseActivity : ComponentActivity() {
     }
 
     companion object {
-
-        // These keys are used by both Activities to exchange expense details.
         const val EXTRA_AMOUNT = "expense_amount"
         const val EXTRA_CATEGORY = "expense_category"
         const val EXTRA_DATE = "expense_date"
@@ -92,8 +85,10 @@ fun AddExpenseScreen(
     onSave: (Double, String, LocalDate, String) -> Unit,
     onCancel: () -> Unit
 ) {
+    // Get the Android context here so it is available to button callbacks.
+    val context = LocalContext.current
 
-    // These variables remember what the user types or selects.
+    // Remember the information entered by the user.
     var amount by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -102,21 +97,17 @@ fun AddExpenseScreen(
     var expanded by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    // This message tells the user what happened after requesting permission.
+    // Display the result of the user's location permission choice.
     var locationPermissionMessage by remember { mutableStateOf("") }
+    var hasLocationPermission by remember { mutableStateOf(false) }
 
-    // Track whether the app currently has either approximate or precise access.
-    var hasLocationPermission by remember {
-        mutableStateOf(false)
-    }
-
-    // Android displays its location permission prompt when this launcher runs.
-    // The request is not started automatically; it only runs after the button tap.
+    // Android displays the permission prompt when this launcher is called.
+    // We only call it after the user taps the Add location button.
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
 
-        // Android may grant approximate location, precise location, or both.
+        // The user may grant approximate location, precise location, or both.
         val coarseGranted =
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
@@ -126,7 +117,7 @@ fun AddExpenseScreen(
         hasLocationPermission = coarseGranted || fineGranted
 
         locationPermissionMessage = if (hasLocationPermission) {
-            "Location permission granted. You can still save your expense as normal."
+            "Location permission granted."
         } else {
             "Location permission was denied. You can still save this expense without a location."
         }
@@ -158,7 +149,6 @@ fun AddExpenseScreen(
                 .padding(innerPadding)
                 .padding(20.dp)
                 .verticalScroll(rememberScrollState()),
-
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
@@ -167,7 +157,7 @@ fun AddExpenseScreen(
                 style = MaterialTheme.typography.bodyLarge
             )
 
-            // The amount field accepts decimal numbers.
+            // Enter the amount spent.
             OutlinedTextField(
                 value = amount,
                 onValueChange = {
@@ -183,7 +173,7 @@ fun AddExpenseScreen(
                 singleLine = true
             )
 
-            // Let the user choose from our predefined categories.
+            // Choose one of the available expense categories.
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = {
@@ -191,7 +181,6 @@ fun AddExpenseScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-
                 OutlinedTextField(
                     value = selectedCategory,
                     onValueChange = {},
@@ -227,7 +216,7 @@ fun AddExpenseScreen(
                 }
             }
 
-            // The date is entered using the ISO format YYYY-MM-DD.
+            // Enter the date in YYYY-MM-DD format.
             OutlinedTextField(
                 value = date,
                 onValueChange = {
@@ -240,7 +229,7 @@ fun AddExpenseScreen(
                 singleLine = true
             )
 
-            // A note is optional, so the user can leave this empty.
+            // The note is optional.
             OutlinedTextField(
                 value = note,
                 onValueChange = {
@@ -253,20 +242,18 @@ fun AddExpenseScreen(
                 maxLines = 3
             )
 
-            // The user chooses when to request location permission.
-            // We do not ask for location permission when this screen opens.
+            // Ask for location permission only when the user chooses this option.
             OutlinedButton(
                 onClick = {
 
-                    // If permission was already granted, there is no need
-                    // to ask Android to show the permission prompt again.
+                    // Check whether the user has already granted either permission.
                     val coarseGranted = ContextCompat.checkSelfPermission(
-                        LocalContext.current,
+                        context,
                         Manifest.permission.ACCESS_COARSE_LOCATION
                     ) == PackageManager.PERMISSION_GRANTED
 
                     val fineGranted = ContextCompat.checkSelfPermission(
-                        LocalContext.current,
+                        context,
                         Manifest.permission.ACCESS_FINE_LOCATION
                     ) == PackageManager.PERMISSION_GRANTED
 
@@ -275,8 +262,8 @@ fun AddExpenseScreen(
                         locationPermissionMessage =
                             "Location permission is already granted."
                     } else {
-                        // Request both permission levels.
-                        // The user can choose approximate or precise access.
+                        // Request approximate and precise location access.
+                        // Android lets the user decide which level to allow.
                         locationPermissionLauncher.launch(
                             arrayOf(
                                 Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -296,7 +283,7 @@ fun AddExpenseScreen(
                 )
             }
 
-            // Explain the permission result without preventing expense saving.
+            // Explain the permission result to the user.
             if (locationPermissionMessage.isNotEmpty()) {
                 Text(
                     text = locationPermissionMessage,
@@ -309,7 +296,7 @@ fun AddExpenseScreen(
                 )
             }
 
-            // Show a helpful message if the required expense details are invalid.
+            // Show validation errors for the expense details.
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
@@ -323,7 +310,7 @@ fun AddExpenseScreen(
             Button(
                 onClick = {
 
-                    // Convert the entered text into the correct data types.
+                    // Convert the amount and date into their proper data types.
                     val expenseAmount = amount.toDoubleOrNull()
 
                     val expenseDate = runCatching {
@@ -334,7 +321,6 @@ fun AddExpenseScreen(
                         expenseAmount == null ||
                                 !expenseAmount.isFinite() ||
                                 expenseAmount <= 0 -> {
-
                             errorMessage = "Please enter a valid amount."
                         }
 
@@ -347,8 +333,8 @@ fun AddExpenseScreen(
                         }
 
                         else -> {
-                            // Permission is optional. A user can save the
-                            // expense whether permission was granted or denied.
+                            // Location permission is optional.
+                            // Saving an expense works even if permission was denied.
                             onSave(
                                 expenseAmount,
                                 selectedCategory,

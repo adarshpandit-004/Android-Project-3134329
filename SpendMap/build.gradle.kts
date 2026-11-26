@@ -49,8 +49,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // Provides FusedLocationProviderClient for retrieving device location.
+    // Used to retrieve the phone's current location.
     implementation(libs.play.services.location)
+
+    // Provides Google Maps components that work directly with Jetpack Compose.
+    implementation(libs.maps.compose)
 
     testImplementation(libs.junit)
 

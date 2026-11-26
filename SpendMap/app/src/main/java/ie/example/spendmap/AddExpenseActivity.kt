@@ -42,6 +42,15 @@ import androidx.core.content.ContextCompat
 import ie.example.spendmap.ui.theme.SpendMapTheme
 import java.time.LocalDate
 
+// These states make it clear what is happening during a location request.
+private enum class LocationRequestState {
+    NOT_REQUESTED,
+    FETCHING,
+    SUCCESS,
+    PERMISSION_DENIED,
+    UNAVAILABLE
+}
+
 class AddExpenseActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,14 +59,23 @@ class AddExpenseActivity : ComponentActivity() {
         setContent {
             SpendMapTheme {
                 AddExpenseScreen(
-                    onSave = { amount, category, date, note ->
+                    onSave = { amount, category, date, note, latitude, longitude ->
 
-                        // Return the new expense details to the Home screen.
+                        // Return the expense details and optional coordinates to Home.
                         val resultIntent = Intent().apply {
                             putExtra(EXTRA_AMOUNT, amount)
                             putExtra(EXTRA_CATEGORY, category)
                             putExtra(EXTRA_DATE, date.toString())
                             putExtra(EXTRA_NOTE, note)
+
+                            // Only include coordinates when a location was obtained.
+                            latitude?.let {
+                                putExtra(EXTRA_LATITUDE, it)
+                            }
+
+                            longitude?.let {
+                                putExtra(EXTRA_LONGITUDE, it)
+                            }
                         }
 
                         setResult(RESULT_OK, resultIntent)
@@ -76,19 +94,29 @@ class AddExpenseActivity : ComponentActivity() {
         const val EXTRA_CATEGORY = "expense_category"
         const val EXTRA_DATE = "expense_date"
         const val EXTRA_NOTE = "expense_note"
+        const val EXTRA_LATITUDE = "expense_latitude"
+        const val EXTRA_LONGITUDE = "expense_longitude"
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseScreen(
-    onSave: (Double, String, LocalDate, String) -> Unit,
+    onSave: (
+        Double,
+        String,
+        LocalDate,
+        String,
+        Double?,
+        Double?
+    ) -> Unit,
     onCancel: () -> Unit
 ) {
-    // Get the Android context here so it is available to button callbacks.
+
+    // Get the Android context for checking permissions and retrieving location.
     val context = LocalContext.current
 
-    // Remember the information entered by the user.
+    // Remember the details entered by the user.
     var amount by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -97,29 +125,68 @@ fun AddExpenseScreen(
     var expanded by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    // Display the result of the user's location permission choice.
-    var locationPermissionMessage by remember { mutableStateOf("") }
-    var hasLocationPermission by remember { mutableStateOf(false) }
+    // Store the optional coordinates returned by the location helper.
+    var latitude by remember { mutableStateOf<Double?>(null) }
+    var longitude by remember { mutableStateOf<Double?>(null) }
 
-    // Android displays the permission prompt when this launcher is called.
-    // We only call it after the user taps the Add location button.
+    // Track the current location request state for clear feedback.
+    var locationState by remember {
+        mutableStateOf(LocationRequestState.NOT_REQUESTED)
+    }
+
+    // Request the current location after permission is available.
+    fun retrieveCurrentLocation() {
+
+        locationState = LocationRequestState.FETCHING
+
+        // Clear any coordinates from an earlier request before retrying.
+        latitude = null
+        longitude = null
+
+        LocationHelper.getCurrentLocation(context) { location ->
+
+            if (
+                location != null &&
+                location.latitude.isFinite() &&
+                location.longitude.isFinite() &&
+                location.latitude in -90.0..90.0 &&
+                location.longitude in -180.0..180.0
+            ) {
+                // Keep the valid coordinates for the expense being created.
+                latitude = location.latitude
+                longitude = location.longitude
+
+                locationState = LocationRequestState.SUCCESS
+            } else {
+                // Location services may return null if the device cannot
+                // determine a position, for example when location is switched off.
+                latitude = null
+                longitude = null
+
+                locationState = LocationRequestState.UNAVAILABLE
+            }
+        }
+    }
+
+    // Android displays its permission prompt only when this launcher is called.
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
 
-        // The user may grant approximate location, precise location, or both.
         val coarseGranted =
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
         val fineGranted =
             permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
 
-        hasLocationPermission = coarseGranted || fineGranted
-
-        locationPermissionMessage = if (hasLocationPermission) {
-            "Location permission granted."
+        if (coarseGranted || fineGranted) {
+            // Permission is available, so continue with the location request.
+            retrieveCurrentLocation()
         } else {
-            "Location permission was denied. You can still save this expense without a location."
+            // Permission is optional; the user can still save the expense.
+            latitude = null
+            longitude = null
+            locationState = LocationRequestState.PERMISSION_DENIED
         }
     }
 
@@ -242,11 +309,10 @@ fun AddExpenseScreen(
                 maxLines = 3
             )
 
-            // Ask for location permission only when the user chooses this option.
+            // Ask for permission or retrieve the location when the user taps here.
             OutlinedButton(
                 onClick = {
 
-                    // Check whether the user has already granted either permission.
                     val coarseGranted = ContextCompat.checkSelfPermission(
                         context,
                         Manifest.permission.ACCESS_COARSE_LOCATION
@@ -258,12 +324,10 @@ fun AddExpenseScreen(
                     ) == PackageManager.PERMISSION_GRANTED
 
                     if (coarseGranted || fineGranted) {
-                        hasLocationPermission = true
-                        locationPermissionMessage =
-                            "Location permission is already granted."
+                        // Permission already exists, so retrieve the location.
+                        retrieveCurrentLocation()
                     } else {
-                        // Request approximate and precise location access.
-                        // Android lets the user decide which level to allow.
+                        // Request permission only after the user's action.
                         locationPermissionLauncher.launch(
                             arrayOf(
                                 Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -272,31 +336,58 @@ fun AddExpenseScreen(
                         )
                     }
                 },
+                enabled = locationState != LocationRequestState.FETCHING,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (hasLocationPermission) {
-                        "Location permission granted"
-                    } else {
-                        "Add location"
+                    text = when (locationState) {
+                        LocationRequestState.FETCHING -> "Getting location..."
+                        LocationRequestState.SUCCESS -> "Refresh location"
+                        LocationRequestState.PERMISSION_DENIED -> "Try adding location again"
+                        LocationRequestState.UNAVAILABLE -> "Retry location"
+                        LocationRequestState.NOT_REQUESTED -> "Add location"
                     }
                 )
             }
 
-            // Explain the permission result to the user.
-            if (locationPermissionMessage.isNotEmpty()) {
-                Text(
-                    text = locationPermissionMessage,
-                    color = if (hasLocationPermission) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            // Explain the result so the user knows whether coordinates were obtained.
+            when (locationState) {
+                LocationRequestState.FETCHING -> {
+                    Text(
+                        text = "Please wait while SpendMap retrieves your location.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                LocationRequestState.SUCCESS -> {
+                    Text(
+                        text = "Location added successfully.",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                LocationRequestState.PERMISSION_DENIED -> {
+                    Text(
+                        text = "Location permission was denied. You can still save this expense without a location.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                LocationRequestState.UNAVAILABLE -> {
+                    Text(
+                        text = "Your location could not be retrieved. Check that location services are enabled, then try again. You can still save without a location.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                LocationRequestState.NOT_REQUESTED -> {
+                    // No message is needed before the user requests a location.
+                }
             }
 
-            // Show validation errors for the expense details.
             if (errorMessage.isNotEmpty()) {
                 Text(
                     text = errorMessage,
@@ -310,7 +401,6 @@ fun AddExpenseScreen(
             Button(
                 onClick = {
 
-                    // Convert the amount and date into their proper data types.
                     val expenseAmount = amount.toDoubleOrNull()
 
                     val expenseDate = runCatching {
@@ -333,17 +423,21 @@ fun AddExpenseScreen(
                         }
 
                         else -> {
-                            // Location permission is optional.
-                            // Saving an expense works even if permission was denied.
+                            // Return the expense with coordinates when available.
+                            // A denied or unavailable location never blocks saving.
                             onSave(
                                 expenseAmount,
                                 selectedCategory,
                                 expenseDate,
-                                note.trim()
+                                note.trim(),
+                                latitude,
+                                longitude
                             )
                         }
                     }
                 },
+                // Avoid finishing the screen while a location request is still running.
+                enabled = locationState != LocationRequestState.FETCHING,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Expense")

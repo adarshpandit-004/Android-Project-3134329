@@ -123,6 +123,31 @@ fun HomeScreen(
                     AddExpenseActivity.EXTRA_NOTE
                 ) ?: ""
 
+                // Read the coordinates only if the Add Expense screen returned them.
+                // This keeps the location optional when permission was denied
+                // or the phone could not retrieve its current location.
+                val latitude = if (
+                    data.hasExtra(AddExpenseActivity.EXTRA_LATITUDE)
+                ) {
+                    data.getDoubleExtra(
+                        AddExpenseActivity.EXTRA_LATITUDE,
+                        0.0
+                    )
+                } else {
+                    null
+                }
+
+                val longitude = if (
+                    data.hasExtra(AddExpenseActivity.EXTRA_LONGITUDE)
+                ) {
+                    data.getDoubleExtra(
+                        AddExpenseActivity.EXTRA_LONGITUDE,
+                        0.0
+                    )
+                } else {
+                    null
+                }
+
                 // Convert the returned date into a LocalDate before saving it.
                 val date = try {
                     LocalDate.parse(dateText)
@@ -133,13 +158,16 @@ fun HomeScreen(
                 if (amount > 0.0 && category.isNotBlank() && date != null) {
                     val newId = (expenses.maxOfOrNull { it.id } ?: 0) + 1
 
+                    // Create the new expense with its optional location coordinates.
                     expenses.add(
                         Expense(
                             id = newId,
                             amount = amount,
                             category = category,
                             date = date,
-                            note = note
+                            note = note,
+                            latitude = latitude,
+                            longitude = longitude
                         )
                     )
                 }
@@ -189,13 +217,20 @@ fun HomeScreen(
                             }
 
                             if (amount > 0.0 && category.isNotBlank() && date != null) {
+
+                                // Keep the original coordinates when the user edits
+                                // the expense's amount, category, date or note.
+                                val existingExpense = expenses[expenseIndex]
+
                                 // Replace the old item with the edited version.
                                 expenses[expenseIndex] = Expense(
                                     id = expenseId,
                                     amount = amount,
                                     category = category,
                                     date = date,
-                                    note = note
+                                    note = note,
+                                    latitude = existingExpense.latitude,
+                                    longitude = existingExpense.longitude
                                 )
                             }
                         }

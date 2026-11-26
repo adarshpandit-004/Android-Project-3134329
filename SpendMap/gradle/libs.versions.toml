@@ -12,6 +12,9 @@ composeBom = "2026.02.01"
 # Google Play Services library used to retrieve the device's location.
 playServicesLocation = "21.3.0"
 
+# Google Maps library designed for Jetpack Compose screens.
+mapsCompose = "9.0.1"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -28,8 +31,11 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-# Makes Google Play Services Location available through a Gradle alias.
+# Provides the fused location provider used by SpendMap.
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# Provides Google Maps composables such as GoogleMap and Marker.
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

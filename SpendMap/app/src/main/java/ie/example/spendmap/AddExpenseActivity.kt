@@ -143,7 +143,7 @@ fun AddExpenseScreen(
         latitude = null
         longitude = null
 
-        LocationHelper.getCurrentLocation(context) { location ->
+        LocationHelpersss.getCurrentLocation(context) { location ->
 
             if (
                 location != null &&

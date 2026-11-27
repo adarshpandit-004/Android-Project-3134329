@@ -1,1 +1,4 @@
 /build
+# Keeping local configuration and API keys out of Git.
+local.properties
+secrets.properties

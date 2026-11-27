@@ -1,9 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-
-    // Reads the Maps API key from secrets.properties.
-    alias(libs.plugins.secrets.gradle)
 }
 
 android {
@@ -41,13 +38,6 @@ android {
     }
 }
 
-// Tell the plugin which file contains the real API key and which file
-// provides a safe fallback when another developer clones the project.
-secrets {
-    propertiesFileName = "secrets.properties"
-    defaultPropertiesFileName = "local.defaults.properties"
-}
-
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
 
@@ -59,11 +49,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // Retrieves the phone's current location.
+    // Keeps the phone's location retrieval working for expenses.
+    // This is still needed even though we are replacing Google Maps.
     implementation(libs.play.services.location)
-
-    // Displays Google Maps using Jetpack Compose.
-    implementation(libs.maps.compose)
 
     testImplementation(libs.junit)
 

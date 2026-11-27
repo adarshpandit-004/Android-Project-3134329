@@ -1,3 +1,4 @@
+
 [versions]
 agp = "9.4.1"
 coreKtx = "1.19.1"
@@ -10,6 +11,7 @@ kotlin = "2.2.10"
 composeBom = "2026.02.01"
 
 playServicesLocation = "21.3.0"
+osmdroid = "6.1.20"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -27,8 +29,11 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-# Google Play Services location provider, used to retrieve the phone's location.
+# Used to retrieve the phone's current location for an expense.
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# Displays OpenStreetMap maps and supports map markers.
+osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -49,9 +50,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // Keeps the phone's location retrieval working for expenses.
-    // This is still needed even though we are replacing Google Maps.
+    // Retrieves the phone's current location for saved expenses.
     implementation(libs.play.services.location)
+
+    // Displays OpenStreetMap maps inside the Android app.
+    implementation(libs.osmdroid)
 
     testImplementation(libs.junit)
 

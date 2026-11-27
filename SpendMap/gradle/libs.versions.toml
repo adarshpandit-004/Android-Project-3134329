@@ -9,10 +9,7 @@ activityCompose = "1.13.0"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
 
-# Google Play Services library used to retrieve the device's location.
 playServicesLocation = "21.3.0"
-
-# Google Maps library designed for Jetpack Compose screens.
 mapsCompose = "9.0.1"
 
 [libraries]
@@ -31,12 +28,15 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 
-# Provides the fused location provider used by SpendMap.
+# Google Play Services location provider.
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
-# Provides Google Maps composables such as GoogleMap and Marker.
+# Google Maps components for Jetpack Compose.
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+# Plugin that reads the Maps API key from a local properties file.
+secrets-gradle = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version = "2.0.1" }

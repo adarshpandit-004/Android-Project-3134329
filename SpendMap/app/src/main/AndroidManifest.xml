@@ -2,13 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!--
-        SpendMap requests location access only when the user taps
-        "Add location" on the Add Expense screen.
+    <!-- Required so Google Maps can load map data from the internet. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
-        COARSE_LOCATION allows approximate location.
-        FINE_LOCATION allows more precise location when the user permits it.
-    -->
+    <!-- Location permissions are requested at runtime when the user chooses. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
@@ -21,6 +18,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SpendMap">
+
+        <!-- The Secrets Gradle Plugin supplies the key from properties files. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"

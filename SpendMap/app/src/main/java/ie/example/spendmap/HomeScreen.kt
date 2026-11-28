@@ -262,6 +262,44 @@ fun HomeScreen(
             expenses = expenses,
             onBack = {
                 showSpendingMap = false
+            },
+            onExpenseClick = { expense ->
+
+                // Open the existing Details screen for the selected map marker.
+                val intent = Intent(
+                    context,
+                    ExpenseDetailsActivity::class.java
+                ).apply {
+
+                    // Pass the expense ID so the existing result handler
+                    // can identify which expense should be edited or deleted.
+                    putExtra(
+                        ExpenseDetailsActivity.EXTRA_EXPENSE_ID,
+                        expense.id
+                    )
+
+                    // Pass the remaining details needed by the Details screen.
+                    putExtra(
+                        ExpenseDetailsActivity.EXTRA_AMOUNT,
+                        expense.amount
+                    )
+                    putExtra(
+                        ExpenseDetailsActivity.EXTRA_CATEGORY,
+                        expense.category
+                    )
+                    putExtra(
+                        ExpenseDetailsActivity.EXTRA_DATE,
+                        expense.date.toString()
+                    )
+                    putExtra(
+                        ExpenseDetailsActivity.EXTRA_NOTE,
+                        expense.note
+                    )
+                }
+
+                // Reuse the existing launcher so edits and deletions are handled
+                // by the same result callback as expenses opened from Home.
+                detailsLauncher.launch(intent)
             }
         )
     } else {

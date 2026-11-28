@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Required so Google Maps can load map data from the internet. -->
+    <!-- Required so OpenStreetMap can download map tiles from the internet. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Location permissions are requested at runtime when the user chooses. -->

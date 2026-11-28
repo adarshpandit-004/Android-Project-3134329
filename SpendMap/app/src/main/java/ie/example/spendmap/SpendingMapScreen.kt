@@ -15,7 +15,8 @@ import androidx.compose.ui.Modifier
 @Composable
 fun SpendingMapScreen(
     expenses: List<Expense>,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onExpenseClick: (Expense) -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -37,7 +38,8 @@ fun SpendingMapScreen(
             expenses = expenses,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            onExpenseClick = onExpenseClick
         )
     }
 }

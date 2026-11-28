@@ -1,7 +1,6 @@
 package ie.example.spendmap
 
 import android.content.Context
-import android.content.Intent
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -16,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import ie.example.spendmap.ui.theme.SpendMapTheme
-import kotlin.jvm.java
 
 class MainActivity : ComponentActivity(), SensorEventListener {
 
@@ -38,6 +36,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     // The shake setting starts enabled and is kept in memory for this milestone.
     // Compose observes this value, so the Settings switch updates when it changes.
     private var shakeEnabled by mutableStateOf(true)
+    // Goes up by one each time a shake is detected. HomeScreen watches it.
+    private var shakeCount by mutableStateOf(0)
 
     // Remembers whether this Activity is currently in its active state.
     private var isActivityResumed = false
@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 // The callback lets the Settings switch update this Activity's value.
                 SpendMapApp(
                     shakeEnabled = shakeEnabled,
+                    shakeCount = shakeCount,
+                    hasAccelerometer = accelerometer != null,
                     onShakeEnabledChange = { enabled ->
                         updateShakeDetection(enabled)
                     }
@@ -163,14 +165,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         ) {
             lastShakeTime = currentTime
 
-            // Open the existing Add Expense screen when a shake is detected.
-            // This reuses the AddExpenseActivity created in Milestone 1.
-            val addExpenseIntent = Intent(
-                this,
-                AddExpenseActivity::class.java
-            )
-
-            startActivity(addExpenseIntent)
+            // Tell HomeScreen a shake happened; it opens Add Expense
+            // through the same launcher as the "+" button, so the result is saved.
+            shakeCount++
         }
     }
 
@@ -183,10 +180,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 @Composable
 fun SpendMapApp(
     shakeEnabled: Boolean = true,
+    shakeCount: Int = 0,
+    hasAccelerometer: Boolean = true,
     onShakeEnabledChange: (Boolean) -> Unit = {}
 ) {
     HomeScreen(
         shakeEnabled = shakeEnabled,
+        shakeCount = shakeCount,
+        hasAccelerometer = hasAccelerometer,
         onShakeEnabledChange = onShakeEnabledChange
     )
 }

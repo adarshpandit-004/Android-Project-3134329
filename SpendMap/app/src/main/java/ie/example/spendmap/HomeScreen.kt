@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -80,6 +82,8 @@ fun shareMonthlySummary(
 @Composable
 fun HomeScreen(
     shakeEnabled: Boolean,
+    shakeCount: Int,
+    hasAccelerometer: Boolean,
     onShakeEnabledChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -177,7 +181,14 @@ fun HomeScreen(
             }
         }
     }
-
+    // Each new shake opens Add Expense through the same launcher as "+",
+    // so the saved expense comes back to this screen.
+    LaunchedEffect(shakeCount) {
+        if (shakeCount > 0) {
+            val intent = Intent(context, AddExpenseActivity::class.java)
+            addExpenseLauncher.launch(intent)
+        }
+    }
     // Open the Details screen and wait for an edit or delete instruction.
     val detailsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -265,6 +276,10 @@ fun HomeScreen(
     // Unlike the progress bar, this value is not capped.
     val budgetPercentage = (totalSpent / monthlyBudget) * 100
 
+    // Phone's Back button returns to Home instead of closing the app.
+    BackHandler(enabled = showSpendingMap) {
+        showSpendingMap = false
+    }
     // Display the map while keeping the existing expense list in this screen's state.
     if (showSpendingMap) {
         SpendingMapScreen(
@@ -561,10 +576,19 @@ fun HomeScreen(
                                     text = "Shake your phone to open the Add Expense screen.",
                                     style = MaterialTheme.typography.bodySmall
                                 )
+                                // Explain why the switch is disabled on phones without the sensor.
+                                if (!hasAccelerometer) {
+                                    Text(
+                                        text = "Your phone doesn't support shake detection.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
 
                             Switch(
-                                checked = shakeEnabled,
+                                checked = shakeEnabled && hasAccelerometer,
+                                enabled = hasAccelerometer,
                                 onCheckedChange = { enabled ->
                                     // Tell MainActivity to enable or disable the sensor.
                                     onShakeEnabledChange(enabled)

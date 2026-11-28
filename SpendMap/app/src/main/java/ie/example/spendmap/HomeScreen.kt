@@ -383,11 +383,19 @@ fun HomeScreen(
 
                             Text(text = "Budget: €%.2f".format(monthlyBudget))
 
+
                             Text(
                                 text = if (remainingBudget >= 0) {
                                     "Remaining: €%.2f".format(remainingBudget)
                                 } else {
                                     "Over budget by: €%.2f".format(-remainingBudget)
+                                },
+                                color = if (remainingBudget < 0) {
+                                    // Use the theme's warning/error colour when spending exceeds the budget.
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    // Keep the normal card text colour while the budget is still available.
+                                    MaterialTheme.colorScheme.onPrimaryContainer
                                 }
                             )
 

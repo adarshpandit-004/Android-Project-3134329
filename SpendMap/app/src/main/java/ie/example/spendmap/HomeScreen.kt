@@ -1,3 +1,4 @@
+
 package ie.example.spendmap
 
 import android.app.Activity
@@ -39,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
-import kotlin.jvm.java
 
 // Prepare a monthly spending summary and open Android's sharing menu.
 fun shareMonthlySummary(
@@ -81,7 +81,6 @@ fun HomeScreen(
     shakeEnabled: Boolean,
     onShakeEnabledChange: (Boolean) -> Unit
 ) {
-
     val context = LocalContext.current
 
     // Keep expenses in Compose state so the screen refreshes after changes.
@@ -100,6 +99,9 @@ fun HomeScreen(
 
     // Controls whether the Settings window is visible.
     var showSettingsDialog by remember { mutableStateOf(false) }
+
+    // Controls whether Home or the Spending Map is currently displayed.
+    var showSpendingMap by remember { mutableStateOf(false) }
 
     // Open the Add Expense screen and wait for the new expense details.
     val addExpenseLauncher = rememberLauncherForActivityResult(
@@ -254,284 +256,303 @@ fun HomeScreen(
     val totalSpent = currentMonthExpenses.sumOf { it.amount }
     val remainingBudget = monthlyBudget - totalSpent
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("SpendMap") },
-                actions = {
-
-                    // Open Settings without leaving the existing Home screen.
-                    TextButton(
-                        onClick = {
-                            showSettingsDialog = true
-                        }
-                    ) {
-                        Text("Settings")
-                    }
-
-                    // Keep the existing monthly budget editing option.
-                    TextButton(
-                        onClick = {
-                            budgetInput = monthlyBudget.toString()
-                            showBudgetDialog = true
-                        }
-                    ) {
-                        Text("Edit budget")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    // Explicit Intent opens our own Add Expense Activity.
-                    val intent = Intent(context, AddExpenseActivity::class.java)
-                    addExpenseLauncher.launch(intent)
-                }
-            ) {
-                Text("+")
+    // Display the map while keeping the existing expense list in this screen's state.
+    if (showSpendingMap) {
+        SpendingMapScreen(
+            expenses = expenses,
+            onBack = {
+                showSpendingMap = false
             }
-        }
-    ) { paddingValues ->
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("SpendMap") },
+                    actions = {
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Monthly spending",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Text(
-                            text = "€%.2f".format(totalSpent),
-                            style = MaterialTheme.typography.headlineLarge
-                        )
-
-                        Text(text = "Budget: €%.2f".format(monthlyBudget))
-
-                        Text(
-                            text = if (remainingBudget >= 0) {
-                                "Remaining: €%.2f".format(remainingBudget)
-                            } else {
-                                "Over budget by: €%.2f".format(-remainingBudget)
-                            }
-                        )
-
-                        // Share the current month's totals and expense count.
-                        Button(
+                        // Open the Spending Map and pass it the current expenses.
+                        TextButton(
                             onClick = {
-                                shareMonthlySummary(
-                                    context = context,
-                                    totalSpent = totalSpent,
-                                    monthlyBudget = monthlyBudget,
-                                    expenseCount = currentMonthExpenses.size
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                                showSpendingMap = true
+                            }
                         ) {
-                            Text("Share Monthly Summary")
+                            Text("Spending Map")
+                        }
+
+                        // Open Settings without leaving the existing Home screen.
+                        TextButton(
+                            onClick = {
+                                showSettingsDialog = true
+                            }
+                        ) {
+                            Text("Settings")
+                        }
+
+                        // Keep the existing monthly budget editing option.
+                        TextButton(
+                            onClick = {
+                                budgetInput = monthlyBudget.toString()
+                                showBudgetDialog = true
+                            }
+                        ) {
+                            Text("Edit budget")
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        // Explicit Intent opens our own Add Expense Activity.
+                        val intent = Intent(context, AddExpenseActivity::class.java)
+                        addExpenseLauncher.launch(intent)
+                    }
+                ) {
+                    Text("+")
+                }
+            }
+        ) { paddingValues ->
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Monthly spending",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            Text(
+                                text = "€%.2f".format(totalSpent),
+                                style = MaterialTheme.typography.headlineLarge
+                            )
+
+                            Text(text = "Budget: €%.2f".format(monthlyBudget))
+
+                            Text(
+                                text = if (remainingBudget >= 0) {
+                                    "Remaining: €%.2f".format(remainingBudget)
+                                } else {
+                                    "Over budget by: €%.2f".format(-remainingBudget)
+                                }
+                            )
+
+                            // Share the current month's totals and expense count.
+                            Button(
+                                onClick = {
+                                    shareMonthlySummary(
+                                        context = context,
+                                        totalSpent = totalSpent,
+                                        monthlyBudget = monthlyBudget,
+                                        expenseCount = currentMonthExpenses.size
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Share Monthly Summary")
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                Text(
-                    text = "Recent expenses",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            if (expenses.isEmpty()) {
                 item {
-                    Text("No expenses yet. Tap + to add your first expense.")
+                    Text(
+                        text = "Recent expenses",
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
-            } else {
-                items(
-                    items = expenses.sortedByDescending { it.date },
-                    key = { it.id }
-                ) { expense ->
 
-                    // Tapping an expense opens its Details screen.
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val intent = Intent(
-                                    context,
-                                    ExpenseDetailsActivity::class.java
-                                ).apply {
-                                    putExtra(
-                                        ExpenseDetailsActivity.EXTRA_EXPENSE_ID,
-                                        expense.id
+                if (expenses.isEmpty()) {
+                    item {
+                        Text("No expenses yet. Tap + to add your first expense.")
+                    }
+                } else {
+                    items(
+                        items = expenses.sortedByDescending { it.date },
+                        key = { it.id }
+                    ) { expense ->
+
+                        // Tapping an expense opens its Details screen.
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val intent = Intent(
+                                        context,
+                                        ExpenseDetailsActivity::class.java
+                                    ).apply {
+                                        putExtra(
+                                            ExpenseDetailsActivity.EXTRA_EXPENSE_ID,
+                                            expense.id
+                                        )
+                                        putExtra(
+                                            ExpenseDetailsActivity.EXTRA_AMOUNT,
+                                            expense.amount
+                                        )
+                                        putExtra(
+                                            ExpenseDetailsActivity.EXTRA_CATEGORY,
+                                            expense.category
+                                        )
+                                        putExtra(
+                                            ExpenseDetailsActivity.EXTRA_DATE,
+                                            expense.date.toString()
+                                        )
+                                        putExtra(
+                                            ExpenseDetailsActivity.EXTRA_NOTE,
+                                            expense.note
+                                        )
+                                    }
+
+                                    detailsLauncher.launch(intent)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = expense.category,
+                                        style = MaterialTheme.typography.titleMedium
                                     )
-                                    putExtra(
-                                        ExpenseDetailsActivity.EXTRA_AMOUNT,
-                                        expense.amount
+
+                                    Text(
+                                        text = expense.note.ifBlank { "No note" },
+                                        style = MaterialTheme.typography.bodySmall
                                     )
-                                    putExtra(
-                                        ExpenseDetailsActivity.EXTRA_CATEGORY,
-                                        expense.category
-                                    )
-                                    putExtra(
-                                        ExpenseDetailsActivity.EXTRA_DATE,
-                                        expense.date.toString()
-                                    )
-                                    putExtra(
-                                        ExpenseDetailsActivity.EXTRA_NOTE,
-                                        expense.note
+
+                                    Text(
+                                        text = expense.date.toString(),
+                                        style = MaterialTheme.typography.bodySmall
                                     )
                                 }
 
-                                detailsLauncher.launch(intent)
+                                Text(
+                                    text = "€%.2f".format(expense.amount),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Settings dialog contains the shake detection on/off switch.
+        if (showSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showSettingsDialog = false
+                },
+                title = {
+                    Text("Settings")
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = expense.category,
-                                    style = MaterialTheme.typography.titleMedium
+                                    text = "Shake to add expense",
+                                    style = MaterialTheme.typography.bodyLarge
                                 )
 
                                 Text(
-                                    text = expense.note.ifBlank { "No note" },
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-
-                                Text(
-                                    text = expense.date.toString(),
+                                    text = "Shake your phone to open the Add Expense screen.",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
 
-                            Text(
-                                text = "€%.2f".format(expense.amount),
-                                style = MaterialTheme.typography.titleMedium
+                            Switch(
+                                checked = shakeEnabled,
+                                onCheckedChange = { enabled ->
+                                    // Tell MainActivity to enable or disable the sensor.
+                                    onShakeEnabledChange(enabled)
+                                }
                             )
                         }
                     }
-                }
-            }
-        }
-    }
-
-    // Settings dialog contains the shake detection on/off switch.
-    if (showSettingsDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showSettingsDialog = false
-            },
-            title = {
-                Text("Settings")
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showSettingsDialog = false
+                        }
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = "Shake to add expense",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                        Text("Done")
+                    }
+                }
+            )
+        }
 
-                            Text(
-                                text = "Shake your phone to open the Add Expense screen.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+        // A small dialog lets the user change their monthly spending limit.
+        if (showBudgetDialog) {
+            AlertDialog(
+                onDismissRequest = { showBudgetDialog = false },
+                title = { Text("Monthly budget") },
+                text = {
+                    OutlinedTextField(
+                        value = budgetInput,
+                        onValueChange = { budgetInput = it },
+                        label = { Text("Budget amount (€)") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val newBudget = budgetInput.toDoubleOrNull()
 
-                        Switch(
-                            checked = shakeEnabled,
-                            onCheckedChange = { enabled ->
-                                // Tell MainActivity to enable or disable the sensor.
-                                onShakeEnabledChange(enabled)
+                            if (newBudget != null && newBudget > 0.0) {
+                                monthlyBudget = newBudget
+                                showBudgetDialog = false
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Enter a valid budget greater than zero.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSettingsDialog = false
-                    }
-                ) {
-                    Text("Done")
-                }
-            }
-        )
-    }
-
-    // A small dialog lets the user change their monthly spending limit.
-    if (showBudgetDialog) {
-        AlertDialog(
-            onDismissRequest = { showBudgetDialog = false },
-            title = { Text("Monthly budget") },
-            text = {
-                OutlinedTextField(
-                    value = budgetInput,
-                    onValueChange = { budgetInput = it },
-                    label = { Text("Budget amount (€)") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val newBudget = budgetInput.toDoubleOrNull()
-
-                        if (newBudget != null && newBudget > 0.0) {
-                            monthlyBudget = newBudget
-                            showBudgetDialog = false
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "Enter a valid budget greater than zero.",
-                                Toast.LENGTH_SHORT
-                            ).show()
                         }
+                    ) {
+                        Text("Save")
                     }
-                ) {
-                    Text("Save")
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showBudgetDialog = false }
+                    ) {
+                        Text("Cancel")
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showBudgetDialog = false }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
+            )
+        }
     }
 }

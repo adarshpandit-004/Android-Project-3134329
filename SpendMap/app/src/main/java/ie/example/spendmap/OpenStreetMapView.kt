@@ -24,7 +24,8 @@ fun OpenStreetMapView(
     modifier: Modifier = Modifier,
     latitude: Double = 53.3498,
     longitude: Double = -6.2603,
-    zoom: Double = 12.0
+    zoom: Double = 12.0,
+    onExpenseClick: (Expense) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -78,7 +79,7 @@ fun OpenStreetMapView(
                         expenseLongitude in -180.0..180.0
             }
 
-            // Add one map marker for every expense that has a valid location.
+            // Add one interactive marker for every located expense.
             locatedExpenses.forEach { expense ->
                 val marker = Marker(map).apply {
                     position = GeoPoint(
@@ -88,6 +89,14 @@ fun OpenStreetMapView(
 
                     title = expense.category
                     snippet = "€%.2f".format(expense.amount)
+
+                    // Remember which expense this marker represents.
+                    setOnMarkerClickListener { _, _ ->
+                        onExpenseClick(expense)
+
+                        // Returning true means this marker tap was handled.
+                        true
+                    }
                 }
 
                 map.overlays.add(marker)
@@ -117,21 +126,12 @@ fun OpenStreetMapView(
 
                 else -> {
                     // Find the northern, southern, eastern and western limits.
-                    val north = locatedExpenses.maxOf {
-                        it.latitude!!
-                    }
-                    val south = locatedExpenses.minOf {
-                        it.latitude!!
-                    }
-                    val east = locatedExpenses.maxOf {
-                        it.longitude!!
-                    }
-                    val west = locatedExpenses.minOf {
-                        it.longitude!!
-                    }
+                    val north = locatedExpenses.maxOf { it.latitude!! }
+                    val south = locatedExpenses.minOf { it.latitude!! }
+                    val east = locatedExpenses.maxOf { it.longitude!! }
+                    val west = locatedExpenses.minOf { it.longitude!! }
 
-                    // Add a little space around the markers so they are not
-                    // placed directly against the edge of the visible map.
+                    // Add some space around the markers.
                     val latitudePadding = max(
                         (north - south) * 0.15,
                         0.002

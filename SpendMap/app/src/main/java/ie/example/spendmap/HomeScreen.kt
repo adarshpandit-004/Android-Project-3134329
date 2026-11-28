@@ -22,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -255,6 +256,11 @@ fun HomeScreen(
 
     val totalSpent = currentMonthExpenses.sumOf { it.amount }
     val remainingBudget = monthlyBudget - totalSpent
+    // Calculate how much of the monthly budget has been used.
+    // Keep the value between 0 and 1 because the progress bar uses that range.
+    val budgetProgress = (totalSpent / monthlyBudget)
+        .toFloat()
+        .coerceIn(0f, 1f)
 
     // Display the map while keeping the existing expense list in this screen's state.
     if (showSpendingMap) {
@@ -382,7 +388,16 @@ fun HomeScreen(
                             )
 
                             Text(text = "Budget: €%.2f".format(monthlyBudget))
-
+                            LinearProgressIndicator(
+                                progress = { budgetProgress },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = if (remainingBudget < 0) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
 
                             Text(
                                 text = if (remainingBudget >= 0) {

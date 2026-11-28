@@ -261,6 +261,9 @@ fun HomeScreen(
     val budgetProgress = (totalSpent / monthlyBudget)
         .toFloat()
         .coerceIn(0f, 1f)
+    // Calculate the real percentage, including values above 100%.
+    // Unlike the progress bar, this value is not capped.
+    val budgetPercentage = (totalSpent / monthlyBudget) * 100
 
     // Display the map while keeping the existing expense list in this screen's state.
     if (showSpendingMap) {
@@ -399,6 +402,15 @@ fun HomeScreen(
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
 
+                            Text(
+                                text = "%.1f%% of monthly budget used".format(budgetPercentage),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (remainingBudget < 0) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                }
+                            )
                             Text(
                                 text = if (remainingBudget >= 0) {
                                     "Remaining: €%.2f".format(remainingBudget)
